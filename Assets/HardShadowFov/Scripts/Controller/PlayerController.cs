@@ -5,7 +5,7 @@ using UnityEngine.Assertions;
 namespace m8t
 {
     [System.Serializable]
-    public class PlayerController : MonoBehaviour
+    public class PlayerController : MonoBehaviour, ICameraObservable
     {
         [Header("Mandatory injections")]
         [SerializeField] private PlatformerMovement movement;
@@ -43,6 +43,16 @@ namespace m8t
             {
                 mouse2d = inputHandler.LookToInput.normalized;
             }
+        }
+
+        public Vector3 Target()
+        {
+            return transform.position;
+        }
+
+        public float TargetVelocityByX()
+        {
+            return movement.Velocity.x;
         }
     }
 }
