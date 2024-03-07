@@ -5,26 +5,18 @@ namespace m8t
 {
     public class FieldOfViewComponent : MonoBehaviour, IEditorableFoV
     {
-        [Header("Mandatory injections")]
-        [SerializeField, InterfaceField(typeof(IWatcher))]
-        private Object _watcher;
-        private IWatcher watcher;
-
-        [Header("General Settings")]
+        [Header("--------- General Settings --------- ")]
         [SerializeField] private int rayCount = 3;
         [SerializeField, Range(0.0f, 360.0f)] private float fovAngle = 360f;
         [SerializeField] private float width = 2f;
-        [SerializeField] private float offset = 2f;
         [SerializeField] private LayerMask layerMask;
+        [SerializeField] private bool drawDebug = false;
 
         // adjacent components
         private MeshFilter meshFilter;
 
         void Start()
         {
-            Assert.IsNotNull(_watcher);
-            watcher = _watcher as IWatcher;
-
             meshFilter = GetComponent<MeshFilter>();
             Assert.IsNotNull(meshFilter);
 
@@ -50,38 +42,31 @@ namespace m8t
 
         private void LateUpdate()
         {
-            Vector2 center = watcher.Position();
-            Vector2 aim = watcher.AimDirection();
+            Vector3 center3d = transform.position;
+            Vector2 center = new Vector2(center3d.x, center3d.y);
+            Vector2 aim = new Vector2(transform.right.x, transform.right.y);
 
             Vector3[] vertices = meshFilter.mesh.vertices;
-            var center3d = new Vector3(center.x, center.y, 0);
-
             vertices[0] = new Vector3(0, 0, 0);
             aim = Rotate(aim, -fovAngle / 2);
             for (int i = 1; i <= rayCount; ++i)
             {
-                Vector3 debugPoint;
-                Vector3 point;
                 var hit = Physics2D.Raycast(center, aim, width, layerMask);
-                if (hit.collider != null)
-                {
-                    debugPoint = new Vector3(hit.point.x, hit.point.y, 0);
+                Vector3 point = hit.collider != null
+                    ? new Vector3(hit.point.x, hit.point.y, 0)
+                    : center3d + new Vector3(aim.x, aim.y, 0) * width;
 
-                    point = new Vector3(hit.point.x, hit.point.y, 0) - center3d;
-                    point += point.normalized * offset;
-                }
-                else
+                if (drawDebug)
                 {
-                    debugPoint = center3d + new Vector3(aim.x, aim.y, 0) * width;
-                    point = new Vector3(aim.x, aim.y, 0) * width;
-                    point += point.normalized * offset;
+                    Debug.DrawLine(center3d, point, Color.red);
                 }
-                Debug.DrawLine(center3d, debugPoint, Color.red);
-                vertices[i] = point;
+
+                vertices[i] = transform.worldToLocalMatrix.MultiplyPoint(point);
                 aim = Rotate(aim, fovAngle / (rayCount - 1));
             }
             meshFilter.mesh.vertices = vertices;
         }
+
         private Vector2 Rotate(Vector2 dir, float angle)
         {
             var res = Quaternion.AngleAxis(angle, Vector3.forward) * new Vector3(dir.x, dir.y, 0);
@@ -102,13 +87,11 @@ namespace m8t
         {
             return fovAngle;
         }
-    }
 
-    public interface IWatcher
-    {
-        Vector2 Position();
-
-        Vector2 AimDirection();
+        public Vector3 Rotation()
+        {
+            return transform.right;
+        }
     }
 
     public interface IEditorableFoV
@@ -118,6 +101,7 @@ namespace m8t
         float CircleSectorRadius();
 
         float CircleSectorAngleDegree();
+
+        Vector3 Rotation();
     }
 }
-

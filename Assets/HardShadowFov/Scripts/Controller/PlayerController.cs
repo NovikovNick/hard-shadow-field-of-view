@@ -4,44 +4,68 @@ using UnityEngine.Assertions;
 
 namespace m8t
 {
-    [System.Serializable]
-    public class PlayerController : MonoBehaviour, ICameraObservable, IWatcher
+    public class PlayerController : MonoBehaviour, ICameraObservable
     {
-        [Header("Mandatory injections")]
+        [Header("--------- Mandatory injections --------- ")]
         [SerializeField] private PlatformerMovement movement;
+        [SerializeField] private HealthComponent healthComponent;
+        [SerializeField] private WeaponComponent weaponComponent;
+        [SerializeField] private CharacterEvents characterEvents;
 
-        // singletons
+        [Header("--------- State --------- ")]
+        [SerializeField] private Vector2 mouseDir2d;
+
+        // infrastructure
         private PlayerInputHandler inputHandler;
-
-        // state
-        private Vector2 mouse2d = Vector2.right;
 
         void Start()
         {
             inputHandler = PlayerInputHandler.Instance;
 
-            Assert.IsNotNull(inputHandler);
             Assert.IsNotNull(movement);
+            Assert.IsNotNull(healthComponent);
+            Assert.IsNotNull(weaponComponent);
+            Assert.IsNotNull(characterEvents);
+            Assert.IsNotNull(inputHandler);
         }
 
         void FixedUpdate()
         {
+            if (healthComponent.IsDead) return;
+
             movement.AddInput(inputHandler.MoveInput.x, inputHandler.JumpInput);
         }
 
+
         void Update()
         {
-            var playerPawnPosition2d = new Vector2(transform.position.x, transform.position.y);
+            if (healthComponent.IsDead)
+            {
+                weaponComponent.StopFire();
+                characterEvents.OnDeath.Invoke();
+                return;
+            }
 
             if (inputHandler.LookAtInput != Vector2.zero)
             {
-                var mouse3d = Camera.main.ScreenToWorldPoint(inputHandler.LookAtInput);
-                mouse2d = (new Vector2(mouse3d.x, mouse3d.y) - playerPawnPosition2d).normalized;
+                Vector3 dir3d = Camera.main.ScreenToWorldPoint(inputHandler.LookAtInput) - transform.position;
+                mouseDir2d = new Vector2(dir3d.x, dir3d.y).normalized;
+                characterEvents.OnLookAt.Invoke(mouseDir2d);
             }
 
-            if (inputHandler.LookToInput != Vector2.zero)
+            if (Input.GetKeyDown(KeyCode.Mouse0))
             {
-                mouse2d = inputHandler.LookToInput.normalized;
+                weaponComponent.StartFire();
+            }
+
+            if (Input.GetKeyUp(KeyCode.Mouse0))
+            {
+                weaponComponent.StopFire();
+            }
+
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                characterEvents.OnDeath.Invoke();
             }
         }
 
@@ -53,16 +77,6 @@ namespace m8t
         public float TargetVelocityByX()
         {
             return movement.Velocity.x;
-        }
-
-        public Vector2 Position()
-        {
-            return transform.position;
-        }
-
-        public Vector2 AimDirection()
-        {
-            return mouse2d;
         }
     }
 }

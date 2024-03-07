@@ -3,16 +3,20 @@ using UnityEngine.Assertions;
 
 namespace m8t
 {
+    [RequireComponent(typeof(Rigidbody2D))]
     public class PlatformerMovement : MonoBehaviour
     {
-        [Header("General settings")]
+        [Header("--------- Mandatory injections ---------")]
+        [SerializeField] private Animator anim;
+
+        [Header("--------- General settings ---------")]
         [SerializeField] private float horizontalInput;
         [SerializeField] private float speed = 15f;
         [SerializeField] private float jumpForce = 150f;
         [SerializeField] private int maxJumps = 2;
         [SerializeField] private LayerMask groundLayerMask;
 
-        [Header("Ground Check Settings")]
+        [Header("--------- Ground Check Settings ---------")]
         [SerializeField] private Vector2 onGroundBoxCastSize;
         [SerializeField] private Vector2 onGroundBoxPositionOffset;
         [SerializeField] private float onGroundBoxCastDistance;
@@ -20,6 +24,7 @@ namespace m8t
         [Header("State")]
         [SerializeField] private int jumps = 0;
 
+        // Adjacement components
         private Rigidbody2D rb;
 
         public Vector2 Velocity
@@ -33,10 +38,15 @@ namespace m8t
             rb = GetComponent<Rigidbody2D>();
 
             Assert.IsNotNull(rb);
+            Assert.IsNotNull(anim);
         }
 
         public void AddInput(float horInput, bool jumpPressed)
         {
+            if (!enabled)
+            {
+                return;
+            }
             if (OnGround())
             {
                 jumps = 0;
@@ -49,6 +59,11 @@ namespace m8t
                 ++jumps;
                 rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
             }
+        }
+
+        private void LateUpdate()
+        {
+            anim.SetInteger("xVelocity", (int) Velocity.x);
         }
 
         private bool OnGround()
